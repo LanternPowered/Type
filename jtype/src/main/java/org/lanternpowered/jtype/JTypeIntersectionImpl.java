@@ -24,7 +24,8 @@ final class JTypeIntersectionImpl implements JTypeIntersection {
 
   @Override
   public JType unresolvedType() {
-    return new JTypeImpl(this, List.of(), false, List.of());
+    var nullability = JTypeImpl.nullabilityOfTypes(types);
+    return new JTypeImpl(this, List.of(), nullability, List.of());
   }
 
   @Override

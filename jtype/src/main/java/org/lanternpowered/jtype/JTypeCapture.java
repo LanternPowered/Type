@@ -88,13 +88,13 @@ public abstract class JTypeCapture<T> implements JType {
   }
 
   @Override
-  public final boolean isNullable() {
-    return this.type.isNullable();
+  public final Nullability nullability() {
+    return this.type.nullability();
   }
 
   @Override
-  public final JType withNullability(boolean nullable) {
-    return this.type.withNullability(nullable);
+  public final JType withNullability(Nullability nullability) {
+    return this.type.withNullability(nullability);
   }
 
   @Override

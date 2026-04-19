@@ -25,20 +25,20 @@ public interface JClassifier {
   JType starType();
 
   default JType createType(List<JTypeProjection> arguments) {
-    return createType(arguments, false, List.of());
+    return createType(arguments, Nullability.NON_NULL, List.of());
   }
 
-  default JType createType(List<JTypeProjection> arguments, boolean nullable) {
-    return createType(arguments, nullable, List.of());
+  default JType createType(List<JTypeProjection> arguments, Nullability nullability) {
+    return createType(arguments, nullability, List.of());
   }
 
   default JType createType(List<JTypeProjection> arguments, List<Annotation> annotations) {
-    return createType(arguments, false, annotations);
+    return createType(arguments, Nullability.NON_NULL, annotations);
   }
 
-  default JType createType(List<JTypeProjection> arguments, boolean nullable, List<Annotation> annotations) {
+  default JType createType(List<JTypeProjection> arguments, Nullability nullability, List<Annotation> annotations) {
     requireNonNull(arguments, "arguments");
     requireNonNull(annotations, "annotations");
-    return new JTypeImpl(this, List.copyOf(arguments), nullable, List.copyOf(annotations));
+    return new JTypeImpl(this, List.copyOf(arguments), nullability, List.copyOf(annotations));
   }
 }

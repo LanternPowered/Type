@@ -49,7 +49,7 @@ final class JTypeParameterImpl implements JTypeParameter {
   public JType unresolvedType() {
     var unresolvedType = this.unresolvedType;
     if (unresolvedType == null) {
-      unresolvedType = new JTypeImpl(this, List.of(), false, List.of());
+      unresolvedType = new JTypeImpl(this, List.of(), Nullability.UNKNOWN, List.of());
       this.unresolvedType = unresolvedType;
     }
     return unresolvedType;

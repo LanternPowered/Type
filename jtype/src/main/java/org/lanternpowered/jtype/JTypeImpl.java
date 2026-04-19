@@ -7,6 +7,7 @@
  */
 package org.lanternpowered.jtype;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
@@ -26,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,11 +36,20 @@ import static org.lanternpowered.jtype.JavaAnnotatedTypeImpl.EMPTY_ANNOTATIONS;
 
 final class JTypeImpl implements JType {
 
-  private static final List<String> NULLABLE_ANNOTATIONS = List.of(
+  private static final Set<String> NULLABLE_ANNOTATIONS = Set.of(
       "org.checkerframework.checker.nullness.qual.Nullable",
       "javax.annotation.Nullable",
+      "jakarta.annotation.Nullable",
       "org.jetbrains.annotations.Nullable",
       "org.jspecify.annotations.Nullable"
+  );
+
+  private static final Set<String> NON_NULL_ANNOTATIONS = Set.of(
+      "org.checkerframework.checker.nullness.qual.NonNull",
+      "javax.annotation.Nonnull",
+      "jakarta.annotation.Nonnull",
+      "org.jetbrains.annotations.NotNull",
+      "org.jspecify.annotations.NonNull"
   );
 
   static JType intersectionOf(List<JType> types) {
@@ -49,8 +60,8 @@ final class JTypeImpl implements JType {
       return types.get(0);
     }
     var intersection = new JTypeIntersectionImpl(List.copyOf(types));
-    var nullable = types.stream().allMatch(JType::isNullable);
-    return new JTypeImpl(intersection, List.of(), nullable, List.of());
+    var nullability = nullabilityOfTypes(types);
+    return new JTypeImpl(intersection, List.of(), nullability, List.of());
   }
 
   static JTypeImpl of(Type type) {
@@ -163,9 +174,30 @@ final class JTypeImpl implements JType {
     return boundType != null ? boundType : of(Object.class);
   }
 
-  static boolean isNullable(List<Annotation> annotations) {
-    return annotations.stream().anyMatch(annotation ->
-        NULLABLE_ANNOTATIONS.contains(annotation.annotationType().getName()));
+  static Nullability nullabilityOfAnnotations(List<Annotation> annotations) {
+    var anyNonNull = false;
+    for (var annotation : annotations) {
+      var name = annotation.annotationType().getName();
+      if (NULLABLE_ANNOTATIONS.contains(name)) {
+        return Nullability.NULLABLE;
+      } else if (NON_NULL_ANNOTATIONS.contains(name)) {
+        anyNonNull = true;
+      }
+    }
+    return anyNonNull ? Nullability.NON_NULL : Nullability.UNKNOWN;
+  }
+
+  static Nullability nullabilityOfTypes(List<JType> types) {
+    var anyUnknown = false;
+    for (var type : types) {
+      var nullability = type.nullability();
+      if (nullability == Nullability.NULLABLE) {
+        return Nullability.NULLABLE;
+      } else if (nullability == Nullability.UNKNOWN) {
+        anyUnknown = true;
+      }
+    }
+    return anyUnknown ? Nullability.UNKNOWN : Nullability.NON_NULL;
   }
 
   private static void collectTypeProjections(Type type, List<JTypeProjection> projections) {
@@ -229,8 +261,8 @@ final class JTypeImpl implements JType {
     }
     if (jTypes != null) {
       var intersection = new JTypeIntersectionImpl(List.copyOf(jTypes));
-      var nullable = jTypes.stream().allMatch(JType::isNullable);
-      jType = new JTypeImpl(intersection, List.of(), nullable, List.of());
+      var nullability = nullabilityOfTypes(jTypes);
+      jType = new JTypeImpl(intersection, List.of(), nullability, List.of());
     }
     return jType;
   }
@@ -273,8 +305,8 @@ final class JTypeImpl implements JType {
     }
     if (jTypes != null) {
       var intersection = new JTypeIntersectionImpl(List.copyOf(jTypes));
-      var nullable = jTypes.stream().allMatch(JType::isNullable);
-      jType = new JTypeImpl(intersection, List.of(), nullable, List.of());
+      var nullability = nullabilityOfTypes(jTypes);
+      jType = new JTypeImpl(intersection, List.of(), nullability, List.of());
     }
     return jType;
   }
@@ -349,12 +381,12 @@ final class JTypeImpl implements JType {
         resolvedArguments.add(argument);
       }
     }
-    return modified ? classifier.createType(resolvedArguments, type.isNullable(), type.annotations()) : type;
+    return modified ? classifier.createType(resolvedArguments, type.nullability(), type.annotations()) : type;
   }
 
   private final JClassifier classifier;
   private final List<JTypeProjection> arguments;
-  private final boolean nullable;
+  private final Nullability nullability;
   private final List<Annotation> annotations;
   private int hash;
   private @Nullable Type javaType;
@@ -366,7 +398,7 @@ final class JTypeImpl implements JType {
     this.classifier = classifier;
     this.arguments = arguments;
     this.annotations = annotations;
-    this.nullable = isNullable(annotations);
+    this.nullability = nullabilityOfAnnotations(annotations);
     this.javaType = javaType;
   }
 
@@ -374,14 +406,14 @@ final class JTypeImpl implements JType {
     this.classifier = classifier;
     this.arguments = arguments;
     this.annotations = List.of(javaType.getAnnotations());
-    this.nullable = isNullable(annotations);
+    this.nullability = nullabilityOfAnnotations(annotations);
     this.annotatedJavaType = javaType;
   }
 
-  JTypeImpl(JClassifier classifier, List<JTypeProjection> arguments, boolean nullable, List<Annotation> annotations) {
+  JTypeImpl(JClassifier classifier, List<JTypeProjection> arguments, Nullability nullability, List<Annotation> annotations) {
     this.classifier = classifier;
     this.arguments = arguments;
-    this.nullable = nullable;
+    this.nullability = nullability;
     this.annotations = annotations;
   }
 
@@ -463,7 +495,7 @@ final class JTypeImpl implements JType {
   private static final AnnotatedWildcardType STAR;
   private static final Type[] EMPTY_TYPES = new Type[0];
 
-  static final JTypeImpl OBJECT = new JTypeImpl(JClass.of(Object.class), List.of(), false, List.of());
+  static final JTypeImpl OBJECT = new JTypeImpl(JClass.of(Object.class), List.of(), Nullability.UNKNOWN, List.of());
 
   static {
     STAR = new JavaAnnotatedWildcardTypeImpl(
@@ -505,16 +537,20 @@ final class JTypeImpl implements JType {
   }
 
   @Override
-  public boolean isNullable() {
-    return nullable;
+  public Nullability nullability() {
+    return nullability;
   }
 
-  private static final class NullableImpl {
-    public static final @Nullable Nullable NULLABLE_IMPL = null;
-    public static final Nullable INSTANCE;
+  private static final class AnnotationImpls {
+    public static final @Nullable Object NULLABLE_FIELD = null;
+    @SuppressWarnings("NullableProblems")
+    public static final @NonNull Object NON_NULL_FIELD = new Object();
+    public static final Nullable NULLABLE;
+    public static final NonNull NON_NULL;
     static {
       try {
-        INSTANCE = (Nullable) NullableImpl.class.getField("NULLABLE_IMPL").getAnnotations()[0];
+        NULLABLE = (Nullable) AnnotationImpls.class.getField("NULLABLE_FIELD").getAnnotations()[0];
+        NON_NULL = (NonNull) AnnotationImpls.class.getField("NON_NULL_FIELD").getAnnotations()[0];
       } catch (NoSuchFieldException ex) {
         throw new IllegalStateException(ex);
       }
@@ -522,17 +558,22 @@ final class JTypeImpl implements JType {
   }
 
   @Override
-  public JType withNullability(boolean nullable) {
-    if (nullable == this.nullable) {
+  public JType withNullability(Nullability nullability) {
+    if (nullability == this.nullability) {
       return this;
     }
     var annotations = new ArrayList<>(this.annotations);
-    if (nullable) {
+    if (this.nullability == Nullability.NULLABLE) {
       annotations.removeIf(annotation -> NULLABLE_ANNOTATIONS.contains(annotation.annotationType().getName()));
-    } else {
-      annotations.add(NullableImpl.INSTANCE);
+    } else if (this.nullability == Nullability.NON_NULL) {
+      annotations.removeIf(annotation -> NON_NULL_ANNOTATIONS.contains(annotation.annotationType().getName()));
     }
-    return new JTypeImpl(classifier, arguments, nullable, List.copyOf(annotations));
+    if (nullability == Nullability.NULLABLE) {
+      annotations.add(AnnotationImpls.NULLABLE);
+    } else if (nullability == Nullability.NON_NULL) {
+      annotations.add(AnnotationImpls.NON_NULL);
+    }
+    return new JTypeImpl(classifier, arguments, nullability, List.copyOf(annotations));
   }
 
   @Override
@@ -542,7 +583,7 @@ final class JTypeImpl implements JType {
 
   @Override
   public boolean isSubtypeOf(JType supertype) {
-    if (!nullable && supertype.isNullable()) {
+    if (nullability == Nullability.NON_NULL && supertype.nullability() == Nullability.NULLABLE) {
       return false;
     }
     var classifier = supertype.classifier();
@@ -558,14 +599,15 @@ final class JTypeImpl implements JType {
       }
     }
     var subtype = findSupertype(this, classifier);
-    if (subtype == null || (!subtype.isNullable() && supertype.isNullable())) {
+    if (subtype == null || (subtype.nullability() == Nullability.NON_NULL &&
+        supertype.nullability() == Nullability.NULLABLE)) {
       return false;
     }
     return isSubtypeOf(subtype, supertype);
   }
 
   private static boolean isSubtypeOf(JType subtype, JType supertype) {
-    if (!supertype.isNullable() && subtype.isNullable()) {
+    if (supertype.nullability() == Nullability.NON_NULL && subtype.nullability() == Nullability.NULLABLE) {
       return false;
     }
     var superClassifier = supertype.classifier();
@@ -583,7 +625,7 @@ final class JTypeImpl implements JType {
     }
     subtype = findSupertype(subtype, superClassifier);
     requireNonNull(subtype, "subtype");
-    if (!supertype.isNullable() && subtype.isNullable()) {
+    if (supertype.nullability() == Nullability.NON_NULL && subtype.nullability() == Nullability.NULLABLE) {
       return false;
     }
     var superArgs = supertype.arguments();
@@ -609,7 +651,7 @@ final class JTypeImpl implements JType {
   }
 
   private static boolean isSameType(JType a, JType b) {
-    return a.isNullable() == b.isNullable() &&
+    return a.nullability() == b.nullability() &&
         a.classifier().equals(b.classifier());
   }
 
@@ -682,10 +724,13 @@ final class JTypeImpl implements JType {
     if (base == classifier) {
       return this;
     }
-    return allSupertypes().stream().filter(type -> {
-      var classifier = type.classifier();
-      return classifier instanceof JClass<?> && classifier.equals(base);
-    }).findFirst().orElse(null);
+    for (var supertype : allSupertypes()) {
+      var classifier = supertype.classifier();
+      if (classifier instanceof JClass<?> && classifier.equals(base)) {
+        return supertype;
+      }
+    }
+    return null;
   }
 
   @Override
@@ -705,7 +750,7 @@ final class JTypeImpl implements JType {
       var upperBound = (JTypeImpl) ((JTypeParameter) classifier).upperBound();
       classifier = upperBound.classifier();
       // TODO: Merge annotations
-      return new JTypeImpl(classifier, upperBound.arguments, upperBound.nullable, upperBound.annotations);
+      return new JTypeImpl(classifier, upperBound.arguments, upperBound.nullability, upperBound.annotations);
     } else if (classifier instanceof JTypeIntersection) {
       var typeIntersection = (JTypeIntersection) classifier;
       var types = typeIntersection.types();
@@ -757,7 +802,7 @@ final class JTypeImpl implements JType {
   }
 
   private boolean equals(JTypeImpl obj) {
-    return Objects.equals(classifier, obj.classifier) && nullable == obj.nullable &&
+    return Objects.equals(classifier, obj.classifier) && nullability == obj.nullability &&
         Objects.equals(annotations, obj.annotations) && Objects.equals(arguments, obj.arguments);
   }
 
@@ -765,7 +810,7 @@ final class JTypeImpl implements JType {
   public int hashCode() {
     int hash = this.hash;
     if (hash == 0) {
-      hash = Objects.hash(classifier, nullable, annotations, arguments);
+      hash = Objects.hash(classifier, nullability, annotations, arguments);
       this.hash = hash;
     }
     return hash;

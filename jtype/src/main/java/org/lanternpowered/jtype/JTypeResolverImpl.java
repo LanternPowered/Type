@@ -241,6 +241,6 @@ final class JTypeResolverImpl implements JTypeResolver {
         resolvedArguments.add(argument);
       }
     }
-    return modified ? classifier.createType(resolvedArguments, type.isNullable(), type.annotations()) : null;
+    return modified ? classifier.createType(resolvedArguments, type.nullability(), type.annotations()) : null;
   }
 }

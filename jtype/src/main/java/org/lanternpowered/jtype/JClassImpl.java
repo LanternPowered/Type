@@ -115,7 +115,7 @@ final class JClassImpl<T> implements JClass<T> {
       for (var typeParameter : typeParameters()) {
         arguments.add(JTypeProjection.invariant(typeParameter.unresolvedType()));
       }
-      unresolvedType = new JTypeImpl(this, arguments, false, List.of());
+      unresolvedType = new JTypeImpl(this, arguments, Nullability.NON_NULL, List.of());
       this.unresolvedType = unresolvedType;
     }
     return unresolvedType;
@@ -129,7 +129,7 @@ final class JClassImpl<T> implements JClass<T> {
       for (var typeParameter : typeParameters()) {
         arguments.add(JTypeProjection.invariant(typeParameter.starType()));
       }
-      starType = new JTypeImpl(this, arguments, false, List.of());
+      starType = new JTypeImpl(this, arguments, Nullability.NON_NULL, List.of());
       this.starType = starType;
     }
     return starType;

@@ -74,14 +74,15 @@ public interface JType extends JAnnotatedElement {
   List<JTypeProjection> arguments();
 
   /**
-   * Returns if the type is marked as nullable. This gives no guarantees of the actual nullability of a value.
+   * Returns the nullability of this type. This gives no guarantees of the actual nullability of a value, merely
+   * an indicator depending on the applied annotations.
    */
-  boolean isNullable();
+  Nullability nullability();
 
   /**
    * Returns a new {@link JType} with the given nullability.
    */
-  JType withNullability(boolean nullable);
+  JType withNullability(Nullability nullability);
 
   /**
    * Returns if this {@link JType} is a supertype of the given type.
