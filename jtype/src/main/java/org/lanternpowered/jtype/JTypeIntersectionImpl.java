@@ -30,6 +30,6 @@ final class JTypeIntersectionImpl implements JTypeIntersection {
 
   @Override
   public JType starType() {
-    return null;
+    return unresolvedType();
   }
 }

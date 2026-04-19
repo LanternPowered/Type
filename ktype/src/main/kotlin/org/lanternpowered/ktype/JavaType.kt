@@ -200,6 +200,7 @@ private fun AnnotatedWildcardType.toTypeProjection(): KTypeProjection {
 private val nullableAnnotations = setOf(
   "org.checkerframework.checker.nullness.qual.Nullable",
   "javax.annotation.Nullable",
+  "jakarta.annotation.Nullable",
   "org.jetbrains.annotations.Nullable",
   "org.jspecify.annotations.Nullable"
 )

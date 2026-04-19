@@ -31,6 +31,11 @@ public interface JAnnotatedElement {
   }
 
   default <A extends Annotation> @Nullable A findAnnotation(Class<A> type) {
-    return (A) annotations().stream().filter(type::isInstance).findFirst().orElse(null);
+    for (var annotation : annotations()) {
+      if (type.isInstance(annotation)) {
+        return type.cast(annotation);
+      }
+    }
+    return null;
   }
 }

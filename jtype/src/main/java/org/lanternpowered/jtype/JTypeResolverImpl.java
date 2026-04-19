@@ -141,7 +141,7 @@ final class JTypeResolverImpl implements JTypeResolver {
       }
       collectTypeParameters(declaringClass.unresolvedType(), type);
     } else {
-      // we don't when to stop looking, so go through all the type parameters in the tree
+      // we don't know when to stop looking, so go through all the type parameters in the tree
       collectTypeParameters(type);
       for (var supertype : type.supertypes()) {
         collectTypeParameters(supertype);
@@ -196,8 +196,9 @@ final class JTypeResolverImpl implements JTypeResolver {
   private @Nullable List<JType> resolveOrNull(List<JType> types) {
     List<JType> resolvedTypes = null;
     for (int i = 0; i < types.size(); i++) {
-      var resolvedType = resolveOrNull(types.get(i));
-      if (resolvedType != null) {
+      var type = types.get(i);
+      var resolvedType = resolveOrNull(type);
+      if (resolvedType != null && resolvedType != type) {
         if (resolvedTypes == null) {
           resolvedTypes = new ArrayList<>(types.size());
           if (i > 0) {
@@ -205,6 +206,8 @@ final class JTypeResolverImpl implements JTypeResolver {
           }
         }
         resolvedTypes.add(resolvedType);
+      } else if (resolvedTypes != null) {
+        resolvedTypes.add(type);
       }
     }
     return resolvedTypes;
@@ -218,29 +221,30 @@ final class JTypeResolverImpl implements JTypeResolver {
     if (classifier instanceof JTypeIntersection) {
       var intersection = (JTypeIntersection) classifier;
       var resolved = resolveOrNull(intersection.types());
-      return resolved == null ? null : JTypeImpl.intersectionOf(resolved);
+      return resolved == null ? null : JTypeImpl.intersectionOf(resolved, type.nullability());
     }
     var arguments = type.arguments();
     if (arguments.isEmpty()) {
-      return type;
+      return null;
     }
-    var resolvedArguments = new ArrayList<JTypeProjection>(arguments.size());
-    var modified = false;
-    for (var argument : arguments) {
+    List<JTypeProjection> resolvedArguments = null;
+    for (int i = 0; i < arguments.size(); i++) {
+      var argument = arguments.get(i);
       var argumentType = argument.type();
-      if (argumentType == null) {
-        // star projection
-        resolvedArguments.add(argument);
-        continue;
+      JType resolved = null;
+      if (argumentType != null) {
+        resolved = resolveOrNull(argumentType);
       }
-      var resolved = resolveOrNull(argumentType);
       if (resolved != null && resolved != argumentType) {
-        modified = true;
+        if (resolvedArguments == null) {
+          resolvedArguments = new ArrayList<>(arguments.size());
+          resolvedArguments.addAll(arguments.subList(0, i));
+        }
         resolvedArguments.add(JTypeProjection.of(argument.variance(), resolved));
-      } else {
+      } else if (resolvedArguments != null) {
         resolvedArguments.add(argument);
       }
     }
-    return modified ? classifier.createType(resolvedArguments, type.nullability(), type.annotations()) : null;
+    return resolvedArguments != null ? classifier.createType(resolvedArguments, type.nullability(), type.annotations()) : null;
   }
 }

@@ -31,7 +31,7 @@ public interface JClass<T> extends JClassifier, JAnnotatedElement {
 
   boolean isSuperclassOf(JClass<?> derived);
 
-  boolean isSubclassOf(Class<?> derived);
+  boolean isSubclassOf(Class<?> base);
 
   boolean isSubclassOf(JClass<?> base);
 

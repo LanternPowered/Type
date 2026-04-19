@@ -98,8 +98,8 @@ final class JClassImpl<T> implements JClass<T> {
   }
 
   @Override
-  public boolean isSubclassOf(Class<?> derived) {
-    return clazz.isAssignableFrom(derived);
+  public boolean isSubclassOf(Class<?> base) {
+    return clazz.isAssignableFrom(base);
   }
 
   @Override
@@ -111,7 +111,8 @@ final class JClassImpl<T> implements JClass<T> {
   public JType unresolvedType() {
     var unresolvedType = this.unresolvedType;
     if (unresolvedType == null) {
-      var arguments = new ArrayList<JTypeProjection>();
+      var typeParameters = typeParameters();
+      var arguments = new ArrayList<JTypeProjection>(typeParameters.size());
       for (var typeParameter : typeParameters()) {
         arguments.add(JTypeProjection.invariant(typeParameter.unresolvedType()));
       }
@@ -125,9 +126,10 @@ final class JClassImpl<T> implements JClass<T> {
   public JType starType() {
     var starType = this.starType;
     if (starType == null) {
-      var arguments = new ArrayList<JTypeProjection>();
-      for (var typeParameter : typeParameters()) {
-        arguments.add(JTypeProjection.invariant(typeParameter.starType()));
+      var argumentsCount = typeParameters().size();
+      var arguments = new ArrayList<JTypeProjection>(argumentsCount);
+      for (int i = 0; i < argumentsCount; i++) {
+        arguments.add(JTypeProjection.star());
       }
       starType = new JTypeImpl(this, arguments, Nullability.NON_NULL, List.of());
       this.starType = starType;

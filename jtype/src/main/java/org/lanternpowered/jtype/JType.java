@@ -50,7 +50,7 @@ public interface JType extends JAnnotatedElement {
    * Returns an intersection of the given {@link JType}s. At least one type must be provided.
    */
   static JType intersectionOf(List<JType> types) {
-    return JTypeImpl.intersectionOf(types);
+    return JTypeImpl.intersectionOf(types, null);
   }
 
   /**
@@ -65,7 +65,7 @@ public interface JType extends JAnnotatedElement {
 
   /**
    * Type arguments passed for the parameters of the classifier in this type.
-   * For example, in the type {@code List<? extends Number>} the only type argument is {@code out Number}.
+   * For example, in the type {@code List<? extends Number>} the only type argument is {@code ? extends Number}.
    * <p>
    * In case this type is based on an inner class, the returned list contains the type arguments provided
    * for the innermost class first, then its outer class, and so on.
@@ -80,7 +80,7 @@ public interface JType extends JAnnotatedElement {
   Nullability nullability();
 
   /**
-   * Returns a new {@link JType} with the given nullability.
+   * Returns a {@link JType} with the given nullability.
    */
   JType withNullability(Nullability nullability);
 

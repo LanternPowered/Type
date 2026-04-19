@@ -97,10 +97,14 @@ class JavaAnnotatedTypeImpl implements AnnotatedType {
     return type;
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <T extends Annotation> @Nullable T getAnnotation(Class<T> annotationClass) {
-    return (T) Arrays.stream(annotations).filter(annotationClass::isInstance).findFirst().orElse(null);
+    for (var annotation : annotations) {
+      if (annotationClass.isInstance(annotation)) {
+        return annotationClass.cast(annotation);
+      }
+    }
+    return null;
   }
 
   @Override

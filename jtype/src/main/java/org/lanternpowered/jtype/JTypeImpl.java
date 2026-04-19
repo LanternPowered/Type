@@ -52,15 +52,21 @@ final class JTypeImpl implements JType {
       "org.jspecify.annotations.NonNull"
   );
 
-  static JType intersectionOf(List<JType> types) {
+  static JType intersectionOf(List<JType> types, @Nullable Nullability nullability) {
     if (types.isEmpty()) {
       throw new IllegalArgumentException("At least one type expected.");
     }
     if (types.size() == 1) {
-      return types.get(0);
+      var type = types.get(0);
+      if (nullability != null) {
+        type = type.withNullability(nullability);
+      }
+      return type;
     }
     var intersection = new JTypeIntersectionImpl(List.copyOf(types));
-    var nullability = nullabilityOfTypes(types);
+    if (nullability == null || nullability == Nullability.UNKNOWN) {
+      nullability = nullabilityOfTypes(types);
+    }
     return new JTypeImpl(intersection, List.of(), nullability, List.of());
   }
 
@@ -87,7 +93,7 @@ final class JTypeImpl implements JType {
     var classifier = JClass.of((Class<?>) type);
     var arguments = new ArrayList<JTypeProjection>();
     collectTypeProjections(type, arguments);
-    return new JTypeImpl(classifier, arguments, type, annotations);
+    return new JTypeImpl(classifier, List.copyOf(arguments), type, annotations);
   }
 
   private static JTypeImpl of(ParameterizedType type, List<Annotation> annotations) {
@@ -758,7 +764,7 @@ final class JTypeImpl implements JType {
       for (int i = 0; i < types.size(); i++) {
         var type = types.get(i);
         var resolved = ((JTypeImpl) type).resolveOrNull();
-        if (resolved != null) {
+        if (resolved != null && resolved != type) {
           if (resolvedTypes == null) {
             resolvedTypes = new ArrayList<>(types.size());
             resolvedTypes.addAll(types.subList(0, i));
@@ -768,16 +774,17 @@ final class JTypeImpl implements JType {
           resolvedTypes.add(type);
         }
       }
-      return resolvedTypes == null ? null : intersectionOf(resolvedTypes);
+      return resolvedTypes == null ? null : intersectionOf(resolvedTypes, nullability);
     }
     List<JTypeProjection> resolvedArguments = null;
     for (int i = 0; i < arguments.size(); i++) {
       var argument = arguments.get(i);
+      var argumentType = argument.type();
       JType resolved = null;
-      if (argument.type() != null) {
-        resolved = argument.type().resolve();
+      if (argumentType != null) {
+        resolved = ((JTypeImpl) argumentType).resolveOrNull();
       }
-      if (resolved != null) {
+      if (resolved != null && resolved != argumentType) {
         if (resolvedArguments == null) {
           resolvedArguments = new ArrayList<>(arguments.size());
           resolvedArguments.addAll(arguments.subList(0, i));
@@ -787,7 +794,7 @@ final class JTypeImpl implements JType {
         resolvedArguments.add(argument);
       }
     }
-    return null;
+    return resolvedArguments != null ? new JTypeImpl(classifier, resolvedArguments, nullability, annotations) : null;
   }
 
   @Override

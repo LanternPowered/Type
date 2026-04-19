@@ -27,7 +27,7 @@ public final class JTypeResolverTest {
   public void resolveMethodReturnType_first() throws NoSuchMethodException {
     var function = JFunction.of(JTypeResolverTest.class.getMethod("first", List.class));
     var resolved = JTypeResolver.create()
-        .where(function.parameters().get(0), new JTypeCapture<List<Apple>>() {})
+        .where(function.parameters().getFirst(), new JTypeCapture<List<Apple>>() {})
         .resolve(function.returnType());
     assertEquals(new JTypeCapture<Apple>() {}, resolved);
   }
@@ -36,8 +36,8 @@ public final class JTypeResolverTest {
   public void resolveParameterType_first() throws NoSuchMethodException {
     var function = JFunction.of(JTypeResolverTest.class.getMethod("first", List.class));
     var resolved = JTypeResolver.create()
-        .where(function.typeParameters().get(0), new JTypeCapture<Apple>() {})
-        .resolve(function.parameters().get(0));
+        .where(function.typeParameters().getFirst(), new JTypeCapture<Apple>() {})
+        .resolve(function.parameters().getFirst());
     assertEquals(new JTypeCapture<List<Apple>>() {}, resolved);
   }
 
@@ -46,19 +46,19 @@ public final class JTypeResolverTest {
     var function = JFunction.of(JTypeResolverTest.class.getMethod("first", List.class));
     var resolved = JTypeResolver.create()
         .whereReturns(function, new JTypeCapture<Apple>() {})
-        .resolve(function.parameters().get(0));
+        .resolve(function.parameters().getFirst());
     assertEquals(new JTypeCapture<List<Apple>>() {}, resolved);
   }
 
   public static <T extends Fruit> T first(List<T> list) {
-    return list.get(0);
+    return list.getFirst();
   }
 
   @Test
   public void resolveMethodReturnType_distinct() throws NoSuchMethodException {
     var function = JFunction.of(JTypeResolverTest.class.getMethod("distinct", List.class));
     var resolved = JTypeResolver.create()
-        .where(function.parameters().get(0), new JTypeCapture<ArrayList<Apple>>() {})
+        .where(function.parameters().getFirst(), new JTypeCapture<ArrayList<Apple>>() {})
         .resolve(function.returnType());
     assertEquals(new JTypeCapture<Set<Apple>>() {}, resolved);
   }
@@ -80,13 +80,13 @@ public final class JTypeResolverTest {
   public void resolveMethodReturnType_firstEnum() throws NoSuchMethodException {
     var function = JFunction.of(JTypeResolverTest.class.getMethod("firstEnum", List.class));
     var resolved = JTypeResolver.create()
-        .where(function.parameters().get(0), new JTypeCapture<List<Dir>>() {})
+        .where(function.parameters().getFirst(), new JTypeCapture<List<Dir>>() {})
         .resolve(function.returnType());
     assertEquals(new JTypeCapture<Dir>() {}, resolved);
   }
 
   public static <E extends Enum<E>> E firstEnum(List<E> list) {
-    return list.get(0);
+    return list.getFirst();
   }
 
   @Test
