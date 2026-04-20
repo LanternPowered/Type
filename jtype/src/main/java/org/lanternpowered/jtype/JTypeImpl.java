@@ -208,7 +208,10 @@ final class JTypeImpl implements JType {
         anyNonNull = true;
       }
     }
-    return anyNonNull || context.nullMarked ? Nullability.NON_NULL : Nullability.UNKNOWN;
+    if (anyNonNull) {
+      return Nullability.NON_NULL;
+    }
+    return context.defaultNullability != null ? context.defaultNullability : Nullability.UNKNOWN;
   }
 
   static Nullability nullabilityOfTypes(List<JType> types) {

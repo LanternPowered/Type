@@ -10,5 +10,6 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 module org.lanternpowered.jtype {
   exports org.lanternpowered.jtype;
-  requires org.jspecify;
+  requires transitive org.jspecify;
+  requires static org.checkerframework.checker.qual;
 }

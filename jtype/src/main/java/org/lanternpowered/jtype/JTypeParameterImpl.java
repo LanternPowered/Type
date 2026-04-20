@@ -36,7 +36,7 @@ final class JTypeParameterImpl implements JTypeParameter {
     var upperBound = this.upperBound;
     if (upperBound == null) {
       var context = new JTypeContext();
-      context.nullMarked = JTypeContext.nullMarked(typeVariable.getGenericDeclaration());
+      context.defaultNullability = JTypeContext.defaultNullability(typeVariable.getGenericDeclaration());
       upperBound = JTypeImpl.boundsToType(typeVariable.getAnnotatedBounds(), context);
       if (upperBound == null) {
         upperBound = JTypeImpl.OBJECT;

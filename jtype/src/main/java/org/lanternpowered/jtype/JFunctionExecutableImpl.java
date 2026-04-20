@@ -44,7 +44,7 @@ final class JFunctionExecutableImpl<R> implements JFunction<R> {
     this.annotations = List.of(executable.getAnnotations());
     var context = new JTypeContext();
     context.function = this;
-    context.nullMarked = JTypeContext.nullMarked(executable);
+    context.defaultNullability = JTypeContext.defaultNullability(executable);
     var originalParameters = executable.getParameters();
     var parameters = new ArrayList<JParameter>(originalParameters.length);
     for (int i = 0; i < originalParameters.length; i++) {

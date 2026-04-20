@@ -17,7 +17,7 @@ final class JTypeCaptureResolver {
       throw new IllegalStateException("Only direct sub classes of JTypeCapture are allowed.");
     }
     var context = new JTypeContext();
-    context.nullMarked = JTypeContext.nullMarked(rawType);
+    context.defaultNullability = JTypeContext.defaultNullability(rawType);
     var annotatedType = ((AnnotatedParameterizedType) rawType.getAnnotatedSuperclass()).getAnnotatedActualTypeArguments()[0];
     return JTypeImpl.of(annotatedType, context);
   }
