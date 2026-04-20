@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
-public interface JCallable<R> extends JAnnotatedElement {
+public interface JCallable<R extends @Nullable Object> extends JAnnotatedElement {
 
   String name();
 

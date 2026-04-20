@@ -38,6 +38,7 @@ public interface JClassifier {
 
   default JType createType(List<JTypeProjection> arguments, Nullability nullability, List<Annotation> annotations) {
     requireNonNull(arguments, "arguments");
+    requireNonNull(nullability, "nullability");
     requireNonNull(annotations, "annotations");
     return new JTypeImpl(this, List.copyOf(arguments), nullability, List.copyOf(annotations));
   }

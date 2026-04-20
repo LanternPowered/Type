@@ -11,14 +11,15 @@ import org.jspecify.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.Type;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public abstract class JTypeCapture<T> implements JType {
+public abstract class JTypeCapture<T extends @Nullable Object> implements JType {
 
   final JType type;
 
-  protected JTypeCapture() {
+  public JTypeCapture() {
     type = JTypeCaptureResolver.resolve(this);
   }
 
@@ -48,8 +49,18 @@ public abstract class JTypeCapture<T> implements JType {
   }
 
   @Override
+  public final boolean isSubtypeOf(Type base) {
+    return this.type.isSubtypeOf(base);
+  }
+
+  @Override
   public final boolean isSubtypeOf(JType base) {
     return this.type.isSubtypeOf(base);
+  }
+
+  @Override
+  public final boolean isSupertypeOf(Type derived) {
+    return this.type.isSupertypeOf(derived);
   }
 
   @Override
@@ -75,6 +86,11 @@ public abstract class JTypeCapture<T> implements JType {
   @Override
   public final JType resolve() {
     return this.type.resolve();
+  }
+
+  @Override
+  public final JType boxed() {
+    return this.type.boxed();
   }
 
   @Override
@@ -124,7 +140,7 @@ public abstract class JTypeCapture<T> implements JType {
 
   @SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
   @Override
-  public final boolean equals(Object obj) {
+  public final boolean equals(@Nullable Object obj) {
     return this.type.equals(obj);
   }
 

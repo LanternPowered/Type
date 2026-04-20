@@ -17,7 +17,6 @@ final class JTypeParameterImpl implements JTypeParameter {
   private final TypeVariable<?> typeVariable;
   private @Nullable JType upperBound;
   private @Nullable JType unresolvedType;
-  private @Nullable JType starType;
 
   JTypeParameterImpl(TypeVariable<?> typeVariable) {
     this.typeVariable = typeVariable;
@@ -36,7 +35,9 @@ final class JTypeParameterImpl implements JTypeParameter {
   public JType upperBound() {
     var upperBound = this.upperBound;
     if (upperBound == null) {
-      upperBound = JTypeImpl.boundsToType(typeVariable.getAnnotatedBounds());
+      var context = new JTypeContext();
+      context.nullMarked = JTypeContext.nullMarked(typeVariable.getGenericDeclaration());
+      upperBound = JTypeImpl.boundsToType(typeVariable.getAnnotatedBounds(), context);
       if (upperBound == null) {
         upperBound = JTypeImpl.OBJECT;
       }
@@ -57,12 +58,7 @@ final class JTypeParameterImpl implements JTypeParameter {
 
   @Override
   public JType starType() {
-    var starType = this.starType;
-//    if (starType == null) {
-//      starType = upperBounds().get(0);
-//      this.starType = starType;
-//    }
-    return starType;
+    return unresolvedType();
   }
 
   @Override

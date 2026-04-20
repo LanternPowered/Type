@@ -42,19 +42,17 @@ final class JFunctionExecutableImpl<R> implements JFunction<R> {
     }
     this.typeParameters = List.copyOf(typeParameters);
     this.annotations = List.of(executable.getAnnotations());
-    try {
-      JTypeImpl.currentFunction.set(this);
-      var originalParameters = executable.getParameters();
-      var parameters = new ArrayList<JParameter>(originalParameters.length);
-      for (int i = 0; i < originalParameters.length; i++) {
-        parameters.add(new JParameterImpl(i, originalParameters[i].getName(),
-            JTypeImpl.of(originalParameters[i].getAnnotatedType()), executable));
-      }
-      this.parameters = List.copyOf(parameters);
-      this.returnType = JTypeImpl.of(executable.getAnnotatedReturnType());
-    } finally {
-      JTypeImpl.currentFunction.remove();
+    var context = new JTypeContext();
+    context.function = this;
+    context.nullMarked = JTypeContext.nullMarked(executable);
+    var originalParameters = executable.getParameters();
+    var parameters = new ArrayList<JParameter>(originalParameters.length);
+    for (int i = 0; i < originalParameters.length; i++) {
+      parameters.add(new JParameterImpl(i, originalParameters[i].getName(),
+          JTypeImpl.of(originalParameters[i].getAnnotatedType(), context), executable));
     }
+    this.parameters = List.copyOf(parameters);
+    this.returnType = JTypeImpl.of(executable.getAnnotatedReturnType(), context);
   }
 
   @Override

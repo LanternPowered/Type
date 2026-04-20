@@ -90,9 +90,19 @@ public interface JType extends JAnnotatedElement {
   boolean isSupertypeOf(JType derived);
 
   /**
+   * Returns if this {@link JType} is a supertype of the given type.
+   */
+  boolean isSupertypeOf(Type derived);
+
+  /**
    * Returns if this {@link JType} is a subtype of the given type.
    */
   boolean isSubtypeOf(JType base);
+
+  /**
+   * Returns if this {@link JType} is a subtype of the given type.
+   */
+  boolean isSubtypeOf(Type base);
 
   /**
    * Returns a list with all the direct superclasses.
@@ -146,4 +156,9 @@ public interface JType extends JAnnotatedElement {
    * Resolves this type by replacing unresolved type parameters by their bounds.
    */
   JType resolve();
+
+  /**
+   * Resolves this type as its boxed type, or returns itself if already boxed.
+   */
+  JType boxed();
 }

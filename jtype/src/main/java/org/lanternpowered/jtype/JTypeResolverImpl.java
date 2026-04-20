@@ -27,11 +27,15 @@ final class JTypeResolverImpl implements JTypeResolver {
   private @Nullable JClass<?> receiverClass;
 
   @Override
-  public JTypeResolver where(JTypeCapture<?> typeParameter, JType type) {
+  public JTypeResolver where(JTypeCapture<? extends @Nullable Object> typeParameter, JType type) {
     requireNonNull(typeParameter, "typeParameter");
     requireNonNull(type, "type");
     var classifier = typeParameter.type.classifier();
     if (classifier instanceof JTypeParameter) {
+      // TODO: Merge nullability in a better way
+      if (type.nullability() == Nullability.UNKNOWN && typeParameter.nullability() != Nullability.UNKNOWN) {
+        type = type.withNullability(typeParameter.nullability());
+      }
       return where((JTypeParameter) classifier, type);
     }
     throw new IllegalArgumentException("Expected a type parameter, not: " + typeParameter);
@@ -85,7 +89,7 @@ final class JTypeResolverImpl implements JTypeResolver {
   }
 
   @Override
-  public JTypeResolver whereReturns(JFunction<?> function, JType type) {
+  public JTypeResolver whereReturns(JFunction<? extends @Nullable Object> function, JType type) {
     requireNonNull(function, "function");
     requireNonNull(type, "type");
     if (type.classifier() instanceof JTypeParameter) {
@@ -245,6 +249,9 @@ final class JTypeResolverImpl implements JTypeResolver {
         resolvedArguments.add(argument);
       }
     }
-    return resolvedArguments != null ? classifier.createType(resolvedArguments, type.nullability(), type.annotations()) : null;
+    if (resolvedArguments != null) {
+      return classifier.createType(resolvedArguments, type.nullability(), type.annotations());
+    }
+    return null;
   }
 }

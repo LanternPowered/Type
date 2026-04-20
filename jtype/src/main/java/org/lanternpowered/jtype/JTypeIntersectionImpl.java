@@ -7,11 +7,14 @@
  */
 package org.lanternpowered.jtype;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 final class JTypeIntersectionImpl implements JTypeIntersection {
 
   private final List<JType> types;
+  private @Nullable JType unresolvedType;
 
   JTypeIntersectionImpl(List<JType> types) {
     this.types = types;
@@ -24,8 +27,13 @@ final class JTypeIntersectionImpl implements JTypeIntersection {
 
   @Override
   public JType unresolvedType() {
-    var nullability = JTypeImpl.nullabilityOfTypes(types);
-    return new JTypeImpl(this, List.of(), nullability, List.of());
+    var unresolvedType = this.unresolvedType;
+    if (unresolvedType == null) {
+      var nullability = JTypeImpl.nullabilityOfTypes(types);
+      unresolvedType = new JTypeImpl(this, List.of(), nullability, List.of());
+      this.unresolvedType = unresolvedType;
+    }
+    return unresolvedType;
   }
 
   @Override

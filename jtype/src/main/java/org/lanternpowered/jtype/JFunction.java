@@ -7,13 +7,15 @@
  */
 package org.lanternpowered.jtype;
 
+import org.jspecify.annotations.Nullable;
+
 import java.lang.reflect.Executable;
 
 import static java.util.Objects.requireNonNull;
 
-public interface JFunction<R> extends JCallable<R> {
+public interface JFunction<R extends @Nullable Object> extends JCallable<R> {
 
-  static <R> JFunction<R> of(Executable executable) {
+  static <R extends @Nullable Object> JFunction<R> of(Executable executable) {
     return JFunctionExecutableImpl.of(requireNonNull(executable, "executable"));
   }
 }

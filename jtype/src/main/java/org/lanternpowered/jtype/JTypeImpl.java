@@ -75,62 +75,71 @@ final class JTypeImpl implements JType {
   }
 
   static JTypeImpl of(Type type, List<Annotation> annotations) {
+    return of(type, annotations, JTypeContext.DEFAULT);
+  }
+
+  static JTypeImpl of(Type type, JTypeContext context) {
+    return of(type, List.of(), context);
+  }
+
+  static JTypeImpl of(Type type, List<Annotation> annotations, JTypeContext context) {
     if (type instanceof Class<?>) {
-      return of((Class<?>) type, annotations);
+      return of((Class<?>) type, annotations, context);
     } else if (type instanceof ParameterizedType) {
-      return of((ParameterizedType) type, annotations);
+      return of((ParameterizedType) type, annotations, context);
     } else if (type instanceof GenericArrayType) {
-      return of((GenericArrayType) type, annotations);
+      return of((GenericArrayType) type, annotations, context);
     } else if (type instanceof WildcardType) {
-      return of((WildcardType) type, annotations);
+      return of((WildcardType) type, annotations, context);
     } else if (type instanceof TypeVariable) {
-      return of((TypeVariable<?>) type, annotations);
+      return of((TypeVariable<?>) type, annotations, context);
     }
     throw new IllegalArgumentException("Unexpected type: " + type);
   }
 
-  private static JTypeImpl of(Class<?> type, List<Annotation> annotations) {
+  private static JTypeImpl of(Class<?> type, List<Annotation> annotations, JTypeContext context) {
     var classifier = JClass.of((Class<?>) type);
     var arguments = new ArrayList<JTypeProjection>();
-    collectTypeProjections(type, arguments);
-    return new JTypeImpl(classifier, List.copyOf(arguments), type, annotations);
+    collectTypeProjections(type, arguments, context);
+    var nullability = nullabilityOfAnnotations(annotations, context);
+    return new JTypeImpl(classifier, List.copyOf(arguments), type, nullability, annotations);
   }
 
-  private static JTypeImpl of(ParameterizedType type, List<Annotation> annotations) {
+  private static JTypeImpl of(ParameterizedType type, List<Annotation> annotations, JTypeContext context) {
     var classifier = JClass.of((Class<?>) type.getRawType());
     var arguments = new ArrayList<JTypeProjection>();
-    collectTypeProjections(type, arguments);
-    return new JTypeImpl(classifier, List.copyOf(arguments), type, annotations);
+    collectTypeProjections(type, arguments, context);
+    var nullability = nullabilityOfAnnotations(annotations, context);
+    return new JTypeImpl(classifier, List.copyOf(arguments), type, nullability, annotations);
   }
 
-  private static JTypeImpl of(GenericArrayType type, List<Annotation> annotations) {
+  private static JTypeImpl of(GenericArrayType type, List<Annotation> annotations, JTypeContext context) {
     var classifier = JClass.of(Object[].class);
-    var arguments = List.of(JTypeProjection.invariant(of(type.getGenericComponentType())));
-    return new JTypeImpl(classifier, arguments, type, annotations);
+    var arguments = List.of(JTypeProjection.invariant(of(type.getGenericComponentType(), context)));
+    var nullability = nullabilityOfAnnotations(annotations, context);
+    return new JTypeImpl(classifier, arguments, type, nullability, annotations);
   }
 
-  private static JTypeImpl of(WildcardType type, List<Annotation> annotations) {
-    var boundType = boundsToType(type.getUpperBounds());
+  private static JTypeImpl of(WildcardType type, List<Annotation> annotations, JTypeContext context) {
+    var boundType = boundsToType(type.getUpperBounds(), context);
     return boundType != null ? boundType : of(Object.class, annotations);
   }
 
-  static final ThreadLocal<@Nullable JFunctionExecutableImpl<?>> currentFunction = new ThreadLocal<>();
-
-  private static JTypeImpl of(TypeVariable<?> type, List<Annotation> annotations) {
+  private static JTypeImpl of(TypeVariable<?> type, List<Annotation> annotations, JTypeContext context) {
     var declaration = type.getGenericDeclaration();
     if (declaration instanceof Executable) {
       var executable = (Executable) declaration;
-      var jClass = JClassImpl.of(executable.getDeclaringClass());
-      var jFunction = currentFunction.get();
+      var jFunction = context.function;
       if (jFunction == null) {
-        jFunction = jClass.function(executable);
+        jFunction = JClassImpl.of(executable.getDeclaringClass()).function(executable);
       }
       var finalJFunction = jFunction;
       var typeParameter = jFunction.typeParameters().stream()
           .filter(parameter -> parameter.name().equals(type.getName()))
           .findFirst().orElseThrow(() -> new IllegalArgumentException(
               "Failed to find TypeParameter with name " + type.getName() + " in function " + finalJFunction));
-      return new JTypeImpl(typeParameter, List.of(), type, annotations);
+      var nullability = nullabilityOfAnnotations(annotations, context);
+      return new JTypeImpl(typeParameter, List.of(), type, nullability, annotations);
     } else if (declaration instanceof Class<?>) {
       var rawType = (Class<?>) declaration;
       var jClass = JClassImpl.of(rawType);
@@ -138,12 +147,17 @@ final class JTypeImpl implements JType {
           .filter(parameter -> parameter.name().equals(type.getName()))
           .findFirst().orElseThrow(() -> new IllegalArgumentException(
               "Failed to find TypeParameter with name " + type.getName() + " in class " + jClass));
-      return new JTypeImpl(typeParameter, List.of(), type, annotations);
+      var nullability = nullabilityOfAnnotations(annotations, context);
+      return new JTypeImpl(typeParameter, List.of(), type, nullability, annotations);
     }
     throw new IllegalArgumentException("Unexpected declaration: " + declaration);
   }
 
   static JTypeImpl of(AnnotatedType type) {
+    return of(type, JTypeContext.DEFAULT);
+  }
+
+  static JTypeImpl of(AnnotatedType type, JTypeContext context) {
     if (type instanceof JavaAnnotatedTypeImpl) {
       var jType = ((JavaAnnotatedTypeImpl) type).jType;
       if (jType != null) {
@@ -151,36 +165,40 @@ final class JTypeImpl implements JType {
       }
     }
     if (type instanceof AnnotatedParameterizedType) {
-      return of((AnnotatedParameterizedType) type);
+      return of((AnnotatedParameterizedType) type, context);
     } else if (type instanceof AnnotatedArrayType) {
-      return of((AnnotatedArrayType) type);
+      return of((AnnotatedArrayType) type, context);
     } else if (type instanceof AnnotatedWildcardType) {
-      return of((AnnotatedWildcardType) type);
+      return of((AnnotatedWildcardType) type, context);
     } else {
-      return of(type.getType(), List.of(type.getAnnotations()));
+      return of(type.getType(), List.of(type.getAnnotations()), context);
     }
   }
 
-  private static JTypeImpl of(AnnotatedParameterizedType type) {
+  private static JTypeImpl of(AnnotatedParameterizedType type, JTypeContext context) {
     var classifier = JClass.of((Class<?>) ((ParameterizedType) type.getType()).getRawType());
     var arguments = new ArrayList<JTypeProjection>();
-    collectTypeProjections(type, arguments);
-    return new JTypeImpl(classifier, arguments, type, List.of(type.getAnnotations()));
+    collectTypeProjections(type, arguments, context);
+    var annotations = List.of(type.getAnnotations());
+    var nullability = nullabilityOfAnnotations(annotations, context);
+    return new JTypeImpl(classifier, arguments, type, nullability, annotations);
   }
 
-  private static JTypeImpl of(AnnotatedArrayType type) {
+  private static JTypeImpl of(AnnotatedArrayType type, JTypeContext context) {
     var classifier = JClass.of(Object[].class);
-    var arguments = List.of(JTypeProjection.invariant(of(type.getAnnotatedGenericComponentType())));
-    return new JTypeImpl(classifier, arguments, type, List.of(type.getAnnotations()));
+    var arguments = List.of(JTypeProjection.invariant(of(type.getAnnotatedGenericComponentType(), context)));
+    var annotations = List.of(type.getAnnotations());
+    var nullability = nullabilityOfAnnotations(annotations, context);
+    return new JTypeImpl(classifier, arguments, type, nullability, annotations);
   }
 
-  private static JTypeImpl of(AnnotatedWildcardType type) {
-    var boundType = boundsToType(type.getAnnotatedUpperBounds());
+  private static JTypeImpl of(AnnotatedWildcardType type, JTypeContext context) {
+    var boundType = boundsToType(type.getAnnotatedUpperBounds(), context);
     // TODO: Add annotations?
-    return boundType != null ? boundType : of(Object.class);
+    return boundType != null ? boundType : OBJECT;
   }
 
-  static Nullability nullabilityOfAnnotations(List<Annotation> annotations) {
+  static Nullability nullabilityOfAnnotations(List<Annotation> annotations, JTypeContext context) {
     var anyNonNull = false;
     for (var annotation : annotations) {
       var name = annotation.annotationType().getName();
@@ -190,7 +208,7 @@ final class JTypeImpl implements JType {
         anyNonNull = true;
       }
     }
-    return anyNonNull ? Nullability.NON_NULL : Nullability.UNKNOWN;
+    return anyNonNull || context.nullMarked ? Nullability.NON_NULL : Nullability.UNKNOWN;
   }
 
   static Nullability nullabilityOfTypes(List<JType> types) {
@@ -206,15 +224,15 @@ final class JTypeImpl implements JType {
     return anyUnknown ? Nullability.UNKNOWN : Nullability.NON_NULL;
   }
 
-  private static void collectTypeProjections(Type type, List<JTypeProjection> projections) {
+  private static void collectTypeProjections(Type type, List<JTypeProjection> projections, JTypeContext context) {
     if (type instanceof ParameterizedType) {
       var parameterizedType = (ParameterizedType) type;
       for (var typeArgument : parameterizedType.getActualTypeArguments()) {
-        projections.add(toTypeProjection(typeArgument));
+        projections.add(toTypeProjection(typeArgument, context));
       }
       var ownerType = parameterizedType.getOwnerType();
       if (ownerType != null) {
-        collectTypeProjections(ownerType, projections);
+        collectTypeProjections(ownerType, projections, context);
       }
     } else if (type instanceof Class<?>) {
       var rawType = (Class<?>) type;
@@ -223,32 +241,32 @@ final class JTypeImpl implements JType {
       }
       var enclosingClass = rawType.getEnclosingClass();
       if (enclosingClass != null) {
-        collectTypeProjections(enclosingClass, projections);
+        collectTypeProjections(enclosingClass, projections, context);
       }
     }
   }
 
-  private static void collectTypeProjections(AnnotatedType type, List<JTypeProjection> projections) {
+  private static void collectTypeProjections(AnnotatedType type, List<JTypeProjection> projections, JTypeContext context) {
     if (type instanceof AnnotatedParameterizedType) {
       var parameterizedType = (AnnotatedParameterizedType) type;
       for (var typeArgument : parameterizedType.getAnnotatedActualTypeArguments()) {
-        projections.add(toTypeProjection(typeArgument));
+        projections.add(toTypeProjection(typeArgument, context));
       }
     }
     var ownerType = type.getAnnotatedOwnerType();
     if (ownerType != null) {
-      collectTypeProjections(ownerType, projections);
+      collectTypeProjections(ownerType, projections, context);
     }
   }
 
-  private static JTypeProjection toTypeProjection(Type type) {
+  private static JTypeProjection toTypeProjection(Type type, JTypeContext context) {
     if (type instanceof WildcardType) {
-      return toTypeProjection((WildcardType) type);
+      return toTypeProjection((WildcardType) type, context);
     }
-    return JTypeProjection.invariant(of(type));
+    return JTypeProjection.invariant(of(type, context));
   }
 
-  static @Nullable JTypeImpl boundsToType(Type[] bounds) {
+  static @Nullable JTypeImpl boundsToType(Type[] bounds, JTypeContext context) {
     List<JType> jTypes = null;
     JTypeImpl jType = null;
     for (var bound : bounds) {
@@ -260,9 +278,9 @@ final class JTypeImpl implements JType {
           jTypes = new ArrayList<>();
           jTypes.add(jType);
         }
-        jTypes.add(of(bound));
+        jTypes.add(of(bound, context));
       } else {
-        jType = of(bound);
+        jType = of(bound, context);
       }
     }
     if (jTypes != null) {
@@ -273,26 +291,26 @@ final class JTypeImpl implements JType {
     return jType;
   }
 
-  private static JTypeProjection toTypeProjection(WildcardType type) {
-    var boundsType = boundsToType(type.getLowerBounds());
+  private static JTypeProjection toTypeProjection(WildcardType type, JTypeContext context) {
+    var boundsType = boundsToType(type.getLowerBounds(), context);
     if (boundsType != null) {
       return JTypeProjection.contravariant(boundsType);
     }
-    boundsType = boundsToType(type.getUpperBounds());
+    boundsType = boundsToType(type.getUpperBounds(), context);
     if (boundsType != null) {
       return JTypeProjection.covariant(boundsType);
     }
     return JTypeProjection.star();
   }
 
-  private static JTypeProjection toTypeProjection(AnnotatedType type) {
+  private static JTypeProjection toTypeProjection(AnnotatedType type, JTypeContext context) {
     if (type instanceof AnnotatedWildcardType) {
-      return toTypeProjection((AnnotatedWildcardType) type);
+      return toTypeProjection((AnnotatedWildcardType) type, context);
     }
-    return JTypeProjection.invariant(of(type));
+    return JTypeProjection.invariant(of(type, context));
   }
 
-  static @Nullable JTypeImpl boundsToType(AnnotatedType[] bounds) {
+  static @Nullable JTypeImpl boundsToType(AnnotatedType[] bounds, JTypeContext context) {
     List<JType> jTypes = null;
     JTypeImpl jType = null;
     for (var bound : bounds) {
@@ -304,9 +322,9 @@ final class JTypeImpl implements JType {
           jTypes = new ArrayList<>();
           jTypes.add(jType);
         }
-        jTypes.add(of(bound));
+        jTypes.add(of(bound, context));
       } else {
-        jType = of(bound);
+        jType = of(bound, context);
       }
     }
     if (jTypes != null) {
@@ -317,12 +335,12 @@ final class JTypeImpl implements JType {
     return jType;
   }
 
-  private static JTypeProjection toTypeProjection(AnnotatedWildcardType type) {
-    var boundsType = boundsToType(type.getAnnotatedLowerBounds());
+  private static JTypeProjection toTypeProjection(AnnotatedWildcardType type, JTypeContext context) {
+    var boundsType = boundsToType(type.getAnnotatedLowerBounds(), context);
     if (boundsType != null) {
       return JTypeProjection.contravariant(boundsType);
     }
-    boundsType = boundsToType(type.getAnnotatedUpperBounds());
+    boundsType = boundsToType(type.getAnnotatedUpperBounds(), context);
     if (boundsType != null) {
       return JTypeProjection.covariant(boundsType);
     }
@@ -400,19 +418,19 @@ final class JTypeImpl implements JType {
   private @Nullable List<JType> supertypes;
   private @Nullable List<JType> allSupertypes;
 
-  JTypeImpl(JClassifier classifier, List<JTypeProjection> arguments, Type javaType, List<Annotation> annotations) {
+  JTypeImpl(JClassifier classifier, List<JTypeProjection> arguments, Type javaType, Nullability nullability, List<Annotation> annotations) {
     this.classifier = classifier;
     this.arguments = arguments;
     this.annotations = annotations;
-    this.nullability = nullabilityOfAnnotations(annotations);
+    this.nullability = nullability;
     this.javaType = javaType;
   }
 
-  JTypeImpl(JClassifier classifier, List<JTypeProjection> arguments, AnnotatedType javaType, List<Annotation> annotations) {
+  JTypeImpl(JClassifier classifier, List<JTypeProjection> arguments, AnnotatedType javaType, Nullability nullability, List<Annotation> annotations) {
     this.classifier = classifier;
     this.arguments = arguments;
-    this.annotations = List.of(javaType.getAnnotations());
-    this.nullability = nullabilityOfAnnotations(annotations);
+    this.annotations = annotations;
+    this.nullability = nullability;
     this.annotatedJavaType = javaType;
   }
 
@@ -555,8 +573,8 @@ final class JTypeImpl implements JType {
     public static final NonNull NON_NULL;
     static {
       try {
-        NULLABLE = (Nullable) AnnotationImpls.class.getField("NULLABLE_FIELD").getAnnotations()[0];
-        NON_NULL = (NonNull) AnnotationImpls.class.getField("NON_NULL_FIELD").getAnnotations()[0];
+        NULLABLE = (Nullable) AnnotationImpls.class.getField("NULLABLE_FIELD").getAnnotatedType().getAnnotations()[0];
+        NON_NULL = (NonNull) AnnotationImpls.class.getField("NON_NULL_FIELD").getAnnotatedType().getAnnotations()[0];
       } catch (NoSuchFieldException ex) {
         throw new IllegalStateException(ex);
       }
@@ -574,12 +592,23 @@ final class JTypeImpl implements JType {
     } else if (this.nullability == Nullability.NON_NULL) {
       annotations.removeIf(annotation -> NON_NULL_ANNOTATIONS.contains(annotation.annotationType().getName()));
     }
+    /*
     if (nullability == Nullability.NULLABLE) {
       annotations.add(AnnotationImpls.NULLABLE);
     } else if (nullability == Nullability.NON_NULL) {
       annotations.add(AnnotationImpls.NON_NULL);
     }
+     */
     return new JTypeImpl(classifier, arguments, nullability, List.copyOf(annotations));
+  }
+
+  @Override
+  public boolean isSupertypeOf(Type derived) {
+    requireNonNull(derived, "derived");
+    if (derived instanceof Class<?> && classifier instanceof JClass<?>) {
+      return ((JClass<?>) classifier).isSuperclassOf((Class<?>) derived);
+    }
+    return JType.of(derived).isSubtypeOf(this);
   }
 
   @Override
@@ -588,7 +617,17 @@ final class JTypeImpl implements JType {
   }
 
   @Override
+  public boolean isSubtypeOf(Type supertype) {
+    requireNonNull(supertype, "supertype");
+    if (supertype instanceof Class<?> && classifier instanceof JClass<?>) {
+      return ((JClass<?>) classifier).isSubclassOf((Class<?>) supertype);
+    }
+    return isSubtypeOf(of(supertype));
+  }
+
+  @Override
   public boolean isSubtypeOf(JType supertype) {
+    requireNonNull(supertype, "supertype");
     if (nullability == Nullability.NON_NULL && supertype.nullability() == Nullability.NULLABLE) {
       return false;
     }
@@ -794,7 +833,21 @@ final class JTypeImpl implements JType {
         resolvedArguments.add(argument);
       }
     }
-    return resolvedArguments != null ? new JTypeImpl(classifier, resolvedArguments, nullability, annotations) : null;
+    if (resolvedArguments != null) {
+      return new JTypeImpl(classifier, resolvedArguments, nullability, annotations);
+    }
+    return null;
+  }
+
+  @Override
+  public JType boxed() {
+    if (classifier instanceof JClass) {
+      var boxed = ((JClass<?>) classifier).boxed();
+      if (boxed != classifier) {
+        return new JTypeImpl(boxed, List.of(), Nullability.NON_NULL, annotations);
+      }
+    }
+    return this;
   }
 
   @Override

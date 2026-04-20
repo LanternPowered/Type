@@ -49,5 +49,16 @@ public interface JClass<T> extends JClassifier, JAnnotatedElement {
 
   boolean isAbstract();
 
+  boolean isInterface();
+
+  boolean isArray();
+
+  boolean isPrimitive();
+
+  /**
+   * Returns this class as its boxed type, or itself if already boxed.
+   */
+  JClass<?> boxed();
+
   @Nullable JClass<?> owner();
 }

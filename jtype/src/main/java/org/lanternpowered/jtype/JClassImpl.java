@@ -30,8 +30,8 @@ final class JClassImpl<T> implements JClass<T> {
   }
 
   private final Class<T> clazz;
-  private final String simpleName;
   private final Map<Executable, JFunctionExecutableImpl<?>> functionByExecutable = new ConcurrentHashMap<>();
+  private @Nullable String simpleName;
   private @Nullable List<JTypeParameter> typeParameters;
   private @Nullable List<Annotation> annotations;
   private @Nullable List<JClass<?>> superclasses;
@@ -44,7 +44,6 @@ final class JClassImpl<T> implements JClass<T> {
 
   private JClassImpl(Class<T> clazz) {
     this.clazz = clazz;
-    this.simpleName = clazz.getSimpleName();
   }
 
   @SuppressWarnings("unchecked")
@@ -64,6 +63,11 @@ final class JClassImpl<T> implements JClass<T> {
 
   @Override
   public String name() {
+    var simpleName = this.simpleName;
+    if (simpleName == null) {
+      simpleName = this.clazz.getSimpleName();
+      this.simpleName = simpleName;
+    }
     return simpleName;
   }
 
@@ -113,7 +117,7 @@ final class JClassImpl<T> implements JClass<T> {
     if (unresolvedType == null) {
       var typeParameters = typeParameters();
       var arguments = new ArrayList<JTypeProjection>(typeParameters.size());
-      for (var typeParameter : typeParameters()) {
+      for (var typeParameter : typeParameters) {
         arguments.add(JTypeProjection.invariant(typeParameter.unresolvedType()));
       }
       unresolvedType = new JTypeImpl(this, arguments, Nullability.NON_NULL, List.of());
@@ -250,6 +254,53 @@ final class JClassImpl<T> implements JClass<T> {
   @Override
   public boolean isAbstract() {
     return Modifier.isAbstract(clazz.getModifiers());
+  }
+
+  @Override
+  public boolean isInterface() {
+    return clazz.isInterface();
+  }
+
+  @Override
+  public boolean isArray() {
+    return clazz.isArray();
+  }
+
+  @Override
+  public boolean isPrimitive() {
+    return clazz.isPrimitive();
+  }
+
+  @Override
+  public JClass<?> boxed() {
+    var boxed = boxed(clazz);
+    if (boxed != null) {
+      return of(boxed);
+    }
+    return this;
+  }
+
+  private static @Nullable Class<?> boxed(Class<?> type) {
+    if (type == byte.class) {
+      return Byte.class;
+    } else if (type == short.class) {
+      return Short.class;
+    } else if (type == int.class) {
+      return Integer.class;
+    } else if (type == long.class) {
+      return Long.class;
+    } else if (type == double.class) {
+      return Double.class;
+    } else if (type == float.class) {
+      return Float.class;
+    } else if (type == char.class) {
+      return Character.class;
+    } else if (type == boolean.class) {
+      return Boolean.class;
+    } else if (type == void.class) {
+      return Void.class;
+    }
+    return null;
   }
 
   @Override

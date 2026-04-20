@@ -61,7 +61,7 @@ public final class Reified<T extends @Nullable Object> {
   /**
    * Returns a {@link Reified} with the given value and type.
    */
-  public static <T> Reified<T> of(T value, JType type) {
+  public static <T extends @Nullable Object> Reified<T> of(T value, JType type) {
     requireNonNull(type, "type");
     return new Reified<>(value, type);
   }
