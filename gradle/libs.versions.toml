@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.3.20"
+kotlin = "2.3.21"
 jspecify = "1.0.0"
 junit = "5.14.3"
 spotless = "8.4.0"
