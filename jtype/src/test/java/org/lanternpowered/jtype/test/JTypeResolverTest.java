@@ -79,6 +79,7 @@ public final class JTypeResolverTest {
   @Test
   public void resolveMethodReturnType_firstEnum() throws NoSuchMethodException {
     var function = JFunction.of(JTypeResolverTest.class.getMethod("firstEnum", List.class));
+    // assertEquals(new JTypeCapture<Enum<?>>() {}, function.returnType());
     var resolved = JTypeResolver.create()
         .where(function.parameters().getFirst(), new JTypeCapture<List<Dir>>() {})
         .resolve(function.returnType());

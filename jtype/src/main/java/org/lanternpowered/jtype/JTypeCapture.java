@@ -29,6 +29,11 @@ public abstract class JTypeCapture<T extends @Nullable Object> implements JType 
   }
 
   @Override
+  public final JClass<?> rawType() {
+    return this.type.rawType();
+  }
+
+  @Override
   public final List<JClass<?>> superclasses() {
     return this.type.superclasses();
   }

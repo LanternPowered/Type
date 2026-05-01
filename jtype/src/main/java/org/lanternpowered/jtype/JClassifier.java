@@ -25,7 +25,7 @@ public interface JClassifier {
   JType starType();
 
   default JType createType(List<JTypeProjection> arguments) {
-    return createType(arguments, Nullability.NON_NULL, List.of());
+    return createType(arguments, Nullability.UNKNOWN, List.of());
   }
 
   default JType createType(List<JTypeProjection> arguments, Nullability nullability) {
@@ -33,7 +33,7 @@ public interface JClassifier {
   }
 
   default JType createType(List<JTypeProjection> arguments, List<Annotation> annotations) {
-    return createType(arguments, Nullability.NON_NULL, annotations);
+    return createType(arguments, Nullability.UNKNOWN, annotations);
   }
 
   default JType createType(List<JTypeProjection> arguments, Nullability nullability, List<Annotation> annotations) {

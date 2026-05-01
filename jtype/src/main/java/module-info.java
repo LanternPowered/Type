@@ -1,5 +1,3 @@
-import org.jspecify.annotations.NullMarked;
-
 /*
  * Copyright (c) LanternPowered <https://www.lanternpowered.org>
  * Copyright (c) contributors
@@ -7,6 +5,8 @@ import org.jspecify.annotations.NullMarked;
  * This work is licensed under the terms of the MIT License (MIT). For
  * a copy, see 'LICENSE.txt' or <https://opensource.org/licenses/MIT>.
  */
+import org.jspecify.annotations.NullMarked;
+
 @NullMarked
 module org.lanternpowered.jtype {
   exports org.lanternpowered.jtype;

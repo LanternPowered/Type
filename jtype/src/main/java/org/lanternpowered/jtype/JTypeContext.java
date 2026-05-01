@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) LanternPowered <https://www.lanternpowered.org>
+ * Copyright (c) contributors
+ *
+ * This work is licensed under the terms of the MIT License (MIT). For
+ * a copy, see 'LICENSE.txt' or <https://opensource.org/licenses/MIT>.
+ */
 package org.lanternpowered.jtype;
 
 import org.checkerframework.framework.qual.DefaultQualifier;
@@ -6,9 +13,13 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.NullUnmarked;
 import org.jspecify.annotations.Nullable;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.GenericDeclaration;
+import java.lang.reflect.TypeVariable;
+import java.util.HashSet;
+import java.util.Set;
 
 final class JTypeContext {
 
@@ -28,6 +39,15 @@ final class JTypeContext {
 
   @Nullable JFunctionExecutableImpl<?> function;
   @Nullable Nullability defaultNullability;
+  @Nullable Set<TypeVariable<?>> typeVariables;
+
+  JTypeContext copy() {
+    var copy = new JTypeContext();
+    copy.function = function;
+    copy.defaultNullability = defaultNullability;
+    copy.typeVariables = typeVariables == null ? null : new HashSet<>(typeVariables);
+    return copy;
+  }
 
   private static @Nullable Nullability defaultNullabilityFromAnnotations(AnnotatedElement annotatedElement) {
     if (annotatedElement.isAnnotationPresent(NullUnmarked.class)) {
@@ -36,10 +56,11 @@ final class JTypeContext {
     if (annotatedElement.isAnnotationPresent(NullMarked.class)) {
       return Nullability.NON_NULL;
     }
+    Nullability nullability = null;
     if (CHECKER_FRAMEWORK) {
-      return CheckerFramework.defaultNullabilityFromAnnotations(annotatedElement);
+      nullability = CheckerFramework.defaultNullabilityFromAnnotations(annotatedElement);
     }
-    return null;
+    return nullability;
   }
 
   private static final class CheckerFramework {
@@ -72,32 +93,42 @@ final class JTypeContext {
         }
       }
       if (allLocations) {
-        var value = defaultQualifier.value();
-        if (value == org.checkerframework.checker.nullness.qual.NonNull.class) {
-          return Nullability.NON_NULL;
-        } else if (value == org.checkerframework.checker.nullness.qual.Nullable.class) {
-          return Nullability.NULLABLE;
-        }
+        return nullabilityFromAnnotationType(defaultQualifier.value());
+      }
+      return null;
+    }
+
+    static @Nullable Nullability nullabilityFromAnnotationType(Class<? extends Annotation> type) {
+      if (type == org.checkerframework.checker.nullness.qual.NonNull.class) {
+        return Nullability.NON_NULL;
+      } else if (type == org.checkerframework.checker.nullness.qual.Nullable.class) {
+        return Nullability.NULLABLE;
       }
       return null;
     }
   }
 
-  private static @Nullable Nullability defaultNullability(Class<?> type) {
+  static @Nullable Nullability defaultNullability(Class<?> type) {
     var nullability = defaultNullabilityFromAnnotations(type);
     if (nullability == null) {
-      var enclosingClass = type.getEnclosingClass();
-      if (enclosingClass != null) {
-        nullability = defaultNullability(enclosingClass);
-      } else {
-        var pkg = type.getPackage();
-        if (pkg != null) {
-          nullability = defaultNullabilityFromAnnotations(pkg);
-        }
-        if (nullability == null) {
-          var module = type.getModule();
-          if (module.isNamed()) {
-            nullability = defaultNullabilityFromAnnotations(module);
+      var enclosingMethod = type.getEnclosingMethod();
+      if (enclosingMethod != null) {
+        nullability = defaultNullability(enclosingMethod);
+      }
+      if (nullability == null) {
+        var enclosingClass = type.getEnclosingClass();
+        if (enclosingClass != null) {
+          nullability = defaultNullability(enclosingClass);
+        } else {
+          var pkg = type.getPackage();
+          if (pkg != null) {
+            nullability = defaultNullabilityFromAnnotations(pkg);
+          }
+          if (nullability == null) {
+            var module = type.getModule();
+            if (module.isNamed()) {
+              nullability = defaultNullabilityFromAnnotations(module);
+            }
           }
         }
       }

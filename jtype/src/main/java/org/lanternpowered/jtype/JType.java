@@ -26,6 +26,20 @@ public interface JType extends JAnnotatedElement {
   }
 
   /**
+   * Returns a nullable {@link JType} representation of the given {@link Type}.
+   */
+  static JType nullableOf(Type type) {
+    return of(type).withNullability(Nullability.NULLABLE);
+  }
+
+  /**
+   * Returns a non-null {@link JType} representation of the given {@link Type}.
+   */
+  static JType nonNullOf(Type type) {
+    return of(type).withNullability(Nullability.NON_NULL);
+  }
+
+  /**
    * Returns a {@link JType} representation of the given {@link Type} and annotations.
    */
   static JType of(Type type, List<Annotation> annotations) {
@@ -37,6 +51,20 @@ public interface JType extends JAnnotatedElement {
    */
   static JType of(AnnotatedType type) {
     return JTypeImpl.of(requireNonNull(type, "type"));
+  }
+
+  /**
+   * Returns a non-null {@link JType} representation of the given {@link AnnotatedType}.
+   */
+  static JType nullableOf(AnnotatedType type) {
+    return of(type).withNullability(Nullability.NULLABLE);
+  }
+
+  /**
+   * Returns a non-null {@link JType} representation of the given {@link AnnotatedType}.
+   */
+  static JType nonNullOf(AnnotatedType type) {
+    return of(type).withNullability(Nullability.NON_NULL);
   }
 
   /**
@@ -62,6 +90,11 @@ public interface JType extends JAnnotatedElement {
    * Returns the classifier. Can be a {@link JClass}, {@link JTypeIntersection} or {@link JTypeParameter}.
    */
   JClassifier classifier();
+
+  /**
+   * Returns the raw {@link JClass} of this type.
+   */
+  JClass<?> rawType();
 
   /**
    * Type arguments passed for the parameters of the classifier in this type.
