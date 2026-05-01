@@ -35,7 +35,7 @@ import java.util.stream.Stream;
 import static java.util.Objects.requireNonNull;
 import static org.lanternpowered.jtype.JavaAnnotatedTypeImpl.EMPTY_ANNOTATIONS;
 
-final class JTypeImpl implements JType {
+final class JTypeImpl implements GenericType<Object> {
 
   private static final Set<String> NULLABLE_ANNOTATIONS = Set.of(
       "org.checkerframework.checker.nullness.qual.Nullable",
@@ -70,6 +70,16 @@ final class JTypeImpl implements JType {
       nullability = nullabilityOfTypes(types);
     }
     return new JTypeImpl(intersection, List.of(), nullability, List.of());
+  }
+
+  @SuppressWarnings("unchecked")
+  static <T> GenericType<T> genericOf(Type type) {
+    return (GenericType<T>) JTypeImpl.of(type);
+  }
+
+  @SuppressWarnings("unchecked")
+  static <T> GenericType<T> genericOf(AnnotatedType type) {
+    return (GenericType<T>) JTypeImpl.of(type);
   }
 
   static JTypeImpl of(Type type) {
@@ -609,8 +619,9 @@ final class JTypeImpl implements JType {
     }
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  public JClass<?> rawType() {
+  public JClass<Object> rawType() {
     var rawType = this.rawType;
     if (rawType == null) {
       if (classifier instanceof JClass<?>) {
@@ -624,7 +635,7 @@ final class JTypeImpl implements JType {
       }
       this.rawType = rawType;
     }
-    return rawType;
+    return (JClass<Object>) rawType;
   }
 
   @Override
@@ -659,7 +670,7 @@ final class JTypeImpl implements JType {
   }
 
   @Override
-  public JType withNullability(Nullability nullability) {
+  public JTypeImpl withNullability(Nullability nullability) {
     if (nullability == this.nullability) {
       return this;
     }

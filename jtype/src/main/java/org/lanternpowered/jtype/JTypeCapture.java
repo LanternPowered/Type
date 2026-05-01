@@ -7,6 +7,8 @@
  */
 package org.lanternpowered.jtype;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullUnmarked;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
@@ -15,7 +17,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public abstract class JTypeCapture<T extends @Nullable Object> implements JType {
+public abstract class JTypeCapture<T extends @Nullable Object> implements JType, GenericType<T> {
 
   final JType type;
 
@@ -28,9 +30,10 @@ public abstract class JTypeCapture<T extends @Nullable Object> implements JType 
     return this.type.javaType();
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  public final JClass<?> rawType() {
-    return this.type.rawType();
+  public final JClass<? super @NonNull T> rawType() {
+    return (JClass<? super @NonNull T>) this.type.rawType();
   }
 
   @Override
@@ -113,9 +116,11 @@ public abstract class JTypeCapture<T extends @Nullable Object> implements JType 
     return this.type.nullability();
   }
 
+  @SuppressWarnings("unchecked")
+  @NullUnmarked
   @Override
-  public final JType withNullability(Nullability nullability) {
-    return this.type.withNullability(nullability);
+  public final @NonNull GenericType<T> withNullability(@NonNull Nullability nullability)  {
+    return (GenericType<T>) this.type.withNullability(nullability);
   }
 
   @Override
