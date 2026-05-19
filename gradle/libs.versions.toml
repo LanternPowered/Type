@@ -2,7 +2,7 @@
 kotlin = "2.3.21"
 jspecify = "1.0.0"
 checkerframework = "4.1.0"
-junit = "6.0.3"
+junit = "6.1.0"
 spotless = "8.4.0"
 
 [libraries]
